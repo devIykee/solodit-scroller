@@ -3,8 +3,6 @@ import { BugReport } from '../../types';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET() {
   try {
     // Try to read from scraped data file
