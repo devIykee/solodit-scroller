@@ -14,13 +14,13 @@ export default function SearchBar({ searchQuery, setSearchQuery }: SearchBarProp
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
       <div className="relative">
         {isExpanded ? (
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full p-2 shadow-lg">
+          <div className="flex items-center gap-2 bg-black border-2 border-white rounded p-2 shadow-2xl">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search reports..."
-              className="flex-1 bg-transparent text-white placeholder-white/50 px-4 py-2 focus:outline-none"
+              className="flex-1 bg-transparent text-white placeholder-gray-500 px-4 py-2 focus:outline-none font-mono"
               autoFocus
             />
             <button
@@ -28,7 +28,7 @@ export default function SearchBar({ searchQuery, setSearchQuery }: SearchBarProp
                 setSearchQuery('');
                 setIsExpanded(false);
               }}
-              className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full transition-colors"
+              className="bg-white text-black hover:bg-gray-200 px-4 py-2 rounded transition-colors font-bold"
             >
               ✕
             </button>
@@ -36,9 +36,8 @@ export default function SearchBar({ searchQuery, setSearchQuery }: SearchBarProp
         ) : (
           <button
             onClick={() => setIsExpanded(true)}
-            className="flex items-center gap-2 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-6 py-3 rounded-full transition-colors shadow-lg"
+            className="flex items-center gap-2 bg-black border-2 border-white hover:bg-white hover:text-black text-white px-6 py-3 rounded transition-colors shadow-2xl font-bold uppercase tracking-wider text-sm"
           >
-            <span className="text-xl">🔍</span>
             <span>Search</span>
           </button>
         )}
