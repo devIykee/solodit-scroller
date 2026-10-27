@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import BugReportCard from './components/BugReportCard';
+import SearchBar from './components/SearchBar';
 import { BugReport } from './types';
 
 export default function Home() {
   const [reports, setReports] = useState<BugReport[]>([]);
+  const [filteredReports, setFilteredReports] = useState<BugReport[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number>(0);
   const isScrolling = useRef(false);
@@ -29,11 +32,30 @@ export default function Home() {
     fetchReports();
   }, []);
 
+  useEffect(() => {
+    // Filter reports based on search query
+    if (searchQuery.trim() === '') {
+      setFilteredReports(reports);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = reports.filter(report =>
+        report.title.toLowerCase().includes(query) ||
+        report.description.toLowerCase().includes(query) ||
+        report.protocol.toLowerCase().includes(query) ||
+        report.severity.toLowerCase().includes(query) ||
+        report.tags.some(tag => tag.toLowerCase().includes(query))
+      );
+      setFilteredReports(filtered);
+      setCurrentIndex(0); // Reset to first result when searching
+    }
+  }, [searchQuery, reports]);
+
   const fetchReports = async () => {
     try {
       const response = await fetch('/api/reports');
       const data = await response.json();
       setReports(data);
+      setFilteredReports(data);
       setIsLoading(false);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
@@ -42,10 +64,17 @@ export default function Home() {
   };
 
   const scrollToIndex = (index: number) => {
-    if (isScrolling.current || reports.length === 0) return;
+    if (isScrolling.current || filteredReports.length === 0) return;
     isScrolling.current = true;
 
-    const newIndex = Math.max(0, Math.min(index, reports.length - 1));
+    // Infinite scroll: wrap around
+    let newIndex = index;
+    if (newIndex < 0) {
+      newIndex = filteredReports.length - 1;
+    } else if (newIndex >= filteredReports.length) {
+      newIndex = 0;
+    }
+
     setCurrentIndex(newIndex);
     localStorage.setItem('lastPosition', newIndex.toString());
 
@@ -101,15 +130,15 @@ export default function Home() {
         e.preventDefault();
         scrollToIndex(currentIndex - 1);
       } else if (e.key === 'b' || e.key === 'B') {
-        if (reports[currentIndex]) {
-          toggleBookmark(reports[currentIndex].id);
+        if (filteredReports[currentIndex]) {
+          toggleBookmark(filteredReports[currentIndex].id);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, reports.length]);
+  }, [currentIndex, filteredReports]);
 
   if (isLoading) {
     return (
@@ -119,34 +148,48 @@ export default function Home() {
     );
   }
 
-  if (reports.length === 0) {
+  if (filteredReports.length === 0) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-black">
-        <div className="text-white text-xl text-center px-4">
-          <p className="mb-4">No reports found.</p>
-          <p className="text-gray-400 text-sm">Check the API or scraper logs.</p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-black">
+        <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+        <div className="text-white text-xl text-center px-4 mt-8">
+          <p className="mb-4">
+            {searchQuery ? `No results found for "${searchQuery}"` : 'No reports found.'}
+          </p>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              Clear search
+            </button>
+          )}
         </div>
       </div>
     );
   }
 
-  const currentReport = reports[currentIndex];
+  const currentReport = filteredReports[currentIndex];
 
   return (
     <div
       ref={containerRef}
-      className="h-screen w-screen overflow-hidden bg-black"
+      className="h-screen w-screen overflow-hidden bg-black relative"
       onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Search Bar */}
+      <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+
+      {/* Report Cards */}
       <div
         className="transition-transform duration-500 ease-out"
         style={{
           transform: `translateY(-${currentIndex * 100}vh)`,
         }}
       >
-        {reports.map((report, index) => (
+        {filteredReports.map((report, index) => (
           <BugReportCard
             key={report.id}
             report={report}
@@ -158,8 +201,8 @@ export default function Home() {
       </div>
 
       {/* Progress indicator */}
-      <div className="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-50">
-        {reports.map((_, index) => (
+      <div className="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-50 max-h-[60vh] overflow-y-auto py-4">
+        {filteredReports.slice(0, 20).map((_, index) => (
           <button
             key={index}
             onClick={() => scrollToIndex(index)}
@@ -168,13 +211,19 @@ export default function Home() {
                 ? 'bg-white h-8'
                 : 'bg-white/30 hover:bg-white/50'
             }`}
+            aria-label={`Go to report ${index + 1}`}
           />
         ))}
+        {filteredReports.length > 20 && (
+          <div className="text-white/50 text-xs text-center">
+            +{filteredReports.length - 20}
+          </div>
+        )}
       </div>
 
       {/* Bookmark indicator */}
       {currentReport && bookmarks.has(currentReport.id) && (
-        <div className="fixed top-4 right-4 z-50">
+        <div className="fixed top-20 right-4 z-50">
           <div className="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-bold">
             ★ Bookmarked
           </div>
@@ -183,8 +232,12 @@ export default function Home() {
 
       {/* Controls hint */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 text-white/50 text-sm z-50 text-center">
-        <div>Scroll, swipe, or use arrow keys</div>
-        <div className="text-xs mt-1">Press B to bookmark • {bookmarks.size} bookmarked</div>
+        <div>
+          {currentIndex + 1} / {filteredReports.length} {searchQuery && '(filtered)'}
+        </div>
+        <div className="text-xs mt-1">
+          Scroll • Arrow keys • B to bookmark • {bookmarks.size} saved
+        </div>
       </div>
     </div>
   );
