@@ -17,8 +17,8 @@ interface SearchBarProps {
   setSearchQuery: (query: string) => void;
   selectedSeverity: string;
   setSelectedSeverity: (severity: string) => void;
-  selectedSource: 'all' | 'live' | 'local';
-  setSelectedSource: (source: 'all' | 'live' | 'local') => void;
+  selectedSource: 'local' | 'live';
+  setSelectedSource: (source: 'local' | 'live') => void;
   showBookmarksOnly: boolean;
   setShowBookmarksOnly: (show: boolean) => void;
   bookmarksCount: number;
@@ -106,7 +106,7 @@ export default function SearchBar({
         setIsFilterOpen(prev => !prev);
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
-        setSelectedSource(selectedSource === 'all' ? 'live' : selectedSource === 'live' ? 'local' : 'all');
+        setSelectedSource(selectedSource === 'local' ? 'live' : 'local');
       } else if (e.key === '?') {
         e.preventDefault();
         setShowHelp(prev => !prev);
@@ -121,31 +121,12 @@ export default function SearchBar({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedSource, setSelectedSource]);
 
-  const hasActiveFilters = selectedSeverity !== 'all' || showBookmarksOnly || selectedSource !== 'all';
+  const hasActiveFilters = selectedSeverity !== 'all' || showBookmarksOnly;
 
   return (
     <>
       {/* Top Floating Control Capsule */}
       <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
-        {/* Active Source Pill (if filtered) */}
-        {selectedSource !== 'all' && (
-          <button
-            onClick={() => setSelectedSource('all')}
-            className={`flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-full border backdrop-blur-md shadow-lg transition-all ${
-              selectedSource === 'live'
-                ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/60'
-                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-300 hover:bg-zinc-800'
-            }`}
-            title="Click to clear source filter"
-          >
-            <span className="text-zinc-400">Source:</span>
-            <span className="font-semibold uppercase tracking-wider">{selectedSource}</span>
-            <span className="text-zinc-500 hover:text-white ml-0.5">
-              <CloseIcon size={12} />
-            </span>
-          </button>
-        )}
-
         {/* Active Query Pill (if query active) */}
         {searchQuery && !isSearchOpen && (
           <button
@@ -221,7 +202,6 @@ export default function SearchBar({
                       onClick={() => {
                         setSelectedSeverity('all');
                         setShowBookmarksOnly(false);
-                        setSelectedSource('all');
                       }}
                       className="text-[10px] text-zinc-400 hover:text-white font-mono"
                     >
@@ -230,36 +210,40 @@ export default function SearchBar({
                   )}
                 </div>
 
-                {/* Source Filter (All / Live / Local) */}
+                {/* Source Feed (Local / Live) */}
                 <div className="mb-3">
                   <div className="text-[11px] text-zinc-500 font-mono mb-1.5 flex justify-between items-center">
-                    <span>Source (S)</span>
-                    <span className="text-[10px] text-zinc-500">
-                      {selectedSource !== 'all' ? selectedSource.toUpperCase() : 'ALL'}
+                    <span>Source Feed (S)</span>
+                    <span className="text-[10px] text-zinc-400 font-semibold uppercase">
+                      {selectedSource}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="grid grid-cols-2 gap-1.5">
                     {[
-                      { id: 'all' as const, label: 'All', count: totalCount },
-                      { id: 'live' as const, label: 'Live', count: liveCount },
                       { id: 'local' as const, label: 'Local', count: localCount },
+                      { id: 'live' as const, label: 'Live', count: liveCount },
                     ].map((src) => {
                       const isSelected = selectedSource === src.id;
                       return (
                         <button
                           key={src.id}
                           onClick={() => setSelectedSource(src.id)}
-                          className={`px-2 py-1.5 rounded text-[11px] font-mono transition-all text-center tracking-wider font-semibold ${
+                          className={`px-2.5 py-1.5 rounded text-[11px] font-mono transition-all text-center tracking-wider font-semibold ${
                             isSelected
                               ? src.id === 'live'
-                                ? 'bg-emerald-500 text-zinc-950 font-bold'
-                                : 'bg-zinc-100 text-zinc-950 font-bold'
+                                ? 'bg-emerald-500 text-zinc-950 font-bold shadow-md'
+                                : 'bg-zinc-100 text-zinc-950 font-bold shadow-md'
                               : src.id === 'live'
-                              ? 'bg-zinc-900 text-emerald-400/90 hover:text-emerald-300 hover:bg-zinc-800 border border-emerald-500/30'
+                              ? 'bg-zinc-900 text-emerald-400 hover:text-emerald-300 hover:bg-zinc-800 border border-emerald-500/30'
                               : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 border border-zinc-800/80'
                           }`}
                         >
-                          <div>{src.label}</div>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span>{src.label}</span>
+                            {src.id === 'live' && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            )}
+                          </div>
                           {src.count !== undefined && (
                             <div className={`text-[9px] font-mono ${isSelected ? 'text-zinc-800' : 'text-zinc-500'}`}>
                               {src.count.toLocaleString()}
@@ -480,7 +464,7 @@ export default function SearchBar({
                 <span className="text-zinc-200">F</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-zinc-900">
-                <span className="text-zinc-400">Cycle source (All / Live / Local)</span>
+                <span className="text-zinc-400">Switch feed (Local / Live)</span>
                 <span className="text-zinc-200">S</span>
               </div>
               <div className="flex justify-between py-1.5">

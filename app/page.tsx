@@ -11,7 +11,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
-  const [selectedSource, setSelectedSource] = useState<'all' | 'live' | 'local'>('all');
+  const [selectedSource, setSelectedSource] = useState<'local' | 'live'>('local');
   const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
@@ -47,6 +47,16 @@ export default function Home() {
   const touchStartY = useRef<number>(0);
   const isScrolling = useRef(false);
   const wheelTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSourceChange = useCallback((source: 'local' | 'live') => {
+    setSelectedSource(source);
+    setCurrentIndex(0);
+    try {
+      localStorage.setItem('lastPosition', '0');
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Compute live vs local counts
   const { liveCount, localCount } = useMemo(() => {
@@ -103,7 +113,7 @@ export default function Home() {
 
     if (selectedSource === 'live') {
       result = result.filter(r => r.source === 'live' || r.id.startsWith('live-'));
-    } else if (selectedSource === 'local') {
+    } else {
       result = result.filter(r => r.source !== 'live' && !r.id.startsWith('live-'));
     }
 
@@ -295,6 +305,57 @@ export default function Home() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Top Center Feeds Navigation (TikTok / Twitter style) */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-7 select-none">
+        <button
+          onClick={() => handleSourceChange('local')}
+          className={`relative flex flex-col items-center py-1 transition-all duration-200 cursor-pointer ${
+            selectedSource === 'local'
+              ? 'text-white font-bold'
+              : 'text-zinc-500 hover:text-zinc-300 font-medium'
+          }`}
+          title="Browse local Solodit findings (6,107)"
+        >
+          <span className="text-sm sm:text-base tracking-wide font-mono">
+            Local
+          </span>
+          <span
+            className={`h-0.5 w-6 rounded-full mt-1 transition-all duration-200 ${
+              selectedSource === 'local'
+                ? 'bg-white scale-100 opacity-100'
+                : 'bg-transparent scale-0 opacity-0'
+            }`}
+          />
+        </button>
+
+        <button
+          onClick={() => handleSourceChange('live')}
+          className={`relative flex flex-col items-center py-1 transition-all duration-200 cursor-pointer ${
+            selectedSource === 'live'
+              ? 'text-white font-bold'
+              : 'text-zinc-500 hover:text-zinc-300 font-medium'
+          }`}
+          title="Browse live additions from Solodit (300)"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm sm:text-base tracking-wide font-mono">
+              Live
+            </span>
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+            </span>
+          </div>
+          <span
+            className={`h-0.5 w-6 rounded-full mt-1 transition-all duration-200 ${
+              selectedSource === 'live'
+                ? 'bg-emerald-400 scale-100 opacity-100'
+                : 'bg-transparent scale-0 opacity-0'
+            }`}
+          />
+        </button>
+      </div>
+
       {/* Top Controls & Navigation */}
       <SearchBar
         searchQuery={searchQuery}
@@ -302,7 +363,7 @@ export default function Home() {
         selectedSeverity={selectedSeverity}
         setSelectedSeverity={setSelectedSeverity}
         selectedSource={selectedSource}
-        setSelectedSource={setSelectedSource}
+        setSelectedSource={handleSourceChange}
         showBookmarksOnly={showBookmarksOnly}
         setShowBookmarksOnly={setShowBookmarksOnly}
         bookmarksCount={bookmarks.size}
@@ -324,7 +385,7 @@ export default function Home() {
             <p className="text-zinc-400 text-sm">
               {showBookmarksOnly
                 ? 'You have not bookmarked any reports matching these criteria yet. Press B on any report to save it.'
-                : `No reports matched your filters.`}
+                : `No reports matched your filters in the ${selectedSource.toUpperCase()} feed.`}
             </p>
             <div className="flex flex-wrap gap-2 justify-center pt-2">
               {searchQuery && (
@@ -343,14 +404,12 @@ export default function Home() {
                   Reset severity
                 </button>
               )}
-              {selectedSource !== 'all' && (
-                <button
-                  onClick={() => setSelectedSource('all')}
-                  className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-mono transition-colors"
-                >
-                  Reset source ({selectedSource.toUpperCase()})
-                </button>
-              )}
+              <button
+                onClick={() => handleSourceChange(selectedSource === 'live' ? 'local' : 'live')}
+                className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-mono transition-colors"
+              >
+                Switch to {selectedSource === 'live' ? 'Local' : 'Live'}
+              </button>
               {showBookmarksOnly && (
                 <button
                   onClick={() => setShowBookmarksOnly(false)}
@@ -387,7 +446,7 @@ export default function Home() {
                 onToggleBookmark={() => toggleBookmark(report.id)}
                 onToggleLock={() => setIsLocked(prev => !prev)}
                 onTagClick={(tag) => setSearchQuery(tag)}
-                onSourceClick={(src) => setSelectedSource(src)}
+                onSourceClick={(src) => handleSourceChange(src)}
               />
             </div>
           ))}
