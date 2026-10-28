@@ -192,10 +192,10 @@ export default function BugReportCard({
   };
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center p-3 sm:p-5 md:p-8 select-text">
+    <div className="h-screen w-screen flex flex-col items-center justify-center pt-16 pb-16 px-3 sm:px-5 md:px-8 select-text">
       <div
         className={`max-w-4xl w-full ${
-          isExpanded ? 'h-[92vh]' : 'h-[86vh]'
+          isExpanded ? 'h-[calc(100vh-6.5rem)]' : 'h-[calc(100vh-9rem)]'
         } bg-zinc-950/95 border ${severityCardBorders[report.severity]} rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${
           isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-35 pointer-events-none'
         }`}
