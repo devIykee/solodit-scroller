@@ -1,6 +1,6 @@
-# 🚀 Deploy to Vercel
+# Deploy to Vercel
 
-Your bug report scroller is ready! Since the CLI had network issues, deploy via the web interface:
+Your bug report scroller is ready to deploy via the web interface:
 
 ## Quick Deploy (Recommended)
 
@@ -16,52 +16,37 @@ That's it! Vercel will:
 
 ## What's Included
 
-✅ **Red/Green/Blue Theme**
-- Critical/High → Red
-- Medium → Blue  
-- Low/Info → Green
+- **Linear-Style Dark Aesthetic**
+  - Clean borders and distraction-free cards
+  - No emojis, vector SVG icons
 
-✅ **Bookmarking**
-- Press `B` to bookmark
-- Saves to localStorage
-- Never lose your place
+- **Scroll Lock**
+  - Press `L` or click Lock to read long exploits without jumping cards
 
-✅ **Auto-Resume**
-- Remembers scroll position
-- Pick up where you left off
-- All data persists
+- **Expandable Search & Filter Icons**
+  - Minimal floating controls
+  - Raycast/Linear-style command palette (`/`)
+  - Filter popover (`F`)
 
-✅ **Real Data Ready**
-- Scraper in `scripts/scrape-solodit.js`
-- Falls back to quality samples
-- API at `/api/reports`
+- **Bookmarking & Auto-Resume**
+  - Press `B` to bookmark
+  - Saves to localStorage
+  - Remembers scroll position
+
+- **6,100+ Real Solodit Reports**
+  - Embedded in `data/solodit-reports.json`
+  - Re-parse anytime with `npm run parse:solodit`
 
 ## Controls
 
-- **Scroll/Swipe** - Navigate reports
-- **Arrow Keys** - Up/Down
+- **Mouse wheel** - Scroll between cards or inside locked cards
+- **Touch gestures** - Swipe up/down on mobile
+- **Arrow keys / J / K** - Navigate reports
+- **L Key** - Lock / unlock card scroll
 - **B Key** - Toggle bookmark
-- **Click Dots** - Jump to specific report
-- **Star Button** - Bookmark current report
-
-## Next Steps
-
-### Get Real Solodit Data
-
-The scraper needs a working network connection to Solodit. To run it:
-
-```bash
-node scripts/scrape-solodit.js
-```
-
-Or set up a cron job to fetch fresh data periodically.
-
-### Customize
-
-Edit these files:
-- `app/components/BugReportCard.tsx` - Card styling
-- `app/page.tsx` - Main app logic
-- `app/api/reports/route.ts` - Data source
+- **R Key** - Jump to random report
+- **/** - Open search command palette
+- **F** - Toggle severity filters popover
 
 ## Repository
 
@@ -77,4 +62,4 @@ npm start      # Production server
 
 ---
 
-**Your app is production-ready!** Just click deploy on Vercel and start doom-scrolling bug reports. 🐛✨
+Built for security researchers who love to doom-scroll bug reports.

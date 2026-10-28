@@ -2,6 +2,16 @@
 
 import { BugReport } from '../types';
 import { useState } from 'react';
+import {
+  LockIcon,
+  UnlockIcon,
+  BookmarkIcon,
+  CopyIcon,
+  CheckIcon,
+  ExternalLinkIcon,
+  ExpandIcon,
+  CollapseIcon,
+} from './Icons';
 
 interface BugReportCardProps {
   report: BugReport;
@@ -13,27 +23,27 @@ interface BugReportCardProps {
   onTagClick?: (tag: string) => void;
 }
 
-const severityColors = {
-  critical: 'bg-black border-red-500',
-  high: 'bg-black border-red-400',
-  medium: 'bg-black border-yellow-500',
-  low: 'bg-black border-green-400',
-  informational: 'bg-black border-blue-400',
+const severityBadgeStyles = {
+  critical: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+  high: 'bg-orange-500/10 text-orange-400 border-orange-500/30',
+  medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
+  low: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+  informational: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
 };
 
-const severityBadgeColors = {
-  critical: 'bg-red-500 text-white',
-  high: 'bg-red-400 text-black',
-  medium: 'bg-yellow-400 text-black',
-  low: 'bg-green-400 text-black',
-  informational: 'bg-blue-400 text-black',
+const severityCardBorders = {
+  critical: 'hover:border-rose-500/40 border-zinc-800',
+  high: 'hover:border-orange-500/40 border-zinc-800',
+  medium: 'hover:border-yellow-500/40 border-zinc-800',
+  low: 'hover:border-emerald-500/40 border-zinc-800',
+  informational: 'hover:border-blue-500/40 border-zinc-800',
 };
 
-const severityTextColors = {
-  critical: 'text-red-500',
-  high: 'text-red-400',
+const severityHeadingColors = {
+  critical: 'text-rose-400',
+  high: 'text-orange-400',
   medium: 'text-yellow-400',
-  low: 'text-green-400',
+  low: 'text-emerald-400',
   informational: 'text-blue-400',
 };
 
@@ -55,7 +65,6 @@ export default function BugReportCard({
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  // Render markdown text (code blocks, links, bold, inline code)
   const renderFormattedText = (text: string) => {
     if (!text) return null;
 
@@ -84,30 +93,39 @@ export default function BugReportCard({
       if (part.type === 'code-block') {
         const isCopied = copiedIndex === pIdx;
         return (
-          <div key={pIdx} className="my-4 bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden shadow-lg">
-            <div className="bg-zinc-900 px-4 py-2 text-xs text-zinc-400 font-mono border-b border-zinc-800 flex justify-between items-center">
-              <span>{part.language || 'code'}</span>
+          <div key={pIdx} className="my-4 bg-zinc-900/90 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="bg-zinc-950/80 px-4 py-2 text-xs text-zinc-400 font-mono border-b border-zinc-800/80 flex justify-between items-center">
+              <span className="font-semibold text-zinc-300">{part.language || 'code'}</span>
               <button
                 onClick={() => copyCode(part.content, pIdx)}
-                className="text-xs hover:text-white transition-colors bg-zinc-800 hover:bg-zinc-700 px-2 py-0.5 rounded text-zinc-300 font-sans"
+                className="text-xs hover:text-white transition-colors bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded text-zinc-300 font-mono flex items-center gap-1.5"
+                title="Copy code snippet"
               >
-                {isCopied ? '✓ Copied' : 'Copy'}
+                {isCopied ? (
+                  <>
+                    <CheckIcon size={12} className="text-emerald-400" />
+                    <span>Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <CopyIcon size={12} />
+                    <span>Copy</span>
+                  </>
+                )}
               </button>
             </div>
-            <pre className="p-4 overflow-x-auto text-xs md:text-sm font-mono text-zinc-200 leading-relaxed">
+            <pre className="p-4 overflow-x-auto text-xs md:text-sm font-mono text-zinc-200 leading-relaxed scrollbar-thin">
               <code>{part.content}</code>
             </pre>
           </div>
         );
       }
 
-      // Format markdown links [text](url), bold **text**, and inline code `code`
       return renderInlineMarkdown(part.content, pIdx);
     });
   };
 
   const renderInlineMarkdown = (content: string, keyPrefix: number) => {
-    // Split by lines to preserve paragraphs
     const lines = content.split('\n');
 
     return (
@@ -117,12 +135,11 @@ export default function BugReportCard({
             return <div key={lIdx} className="h-2" />;
           }
 
-          // Check for bullet list item
           const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ');
           const displayLine = isBullet ? line.trim().slice(2) : line;
 
           return (
-            <p key={lIdx} className={`${isBullet ? 'pl-4 border-l-2 border-zinc-700 my-1' : ''} leading-relaxed`}>
+            <p key={lIdx} className={`${isBullet ? 'pl-4 border-l-2 border-zinc-800 my-1' : ''} leading-relaxed`}>
               {parseLineSpans(displayLine)}
             </p>
           );
@@ -132,12 +149,10 @@ export default function BugReportCard({
   };
 
   const parseLineSpans = (line: string) => {
-    // Regex for markdown link [label](url), inline code `code`, bold **text**
     const tokenRegex = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*)/g;
     const tokens = line.split(tokenRegex);
 
     return tokens.map((token, i) => {
-      // Markdown link [label](url)
       const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
       if (linkMatch) {
         return (
@@ -154,16 +169,14 @@ export default function BugReportCard({
         );
       }
 
-      // Inline code `code`
       if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
         return (
-          <code key={i} className="bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded text-xs font-mono border border-zinc-700">
+          <code key={i} className="bg-zinc-800/80 text-zinc-200 px-1.5 py-0.5 rounded text-xs font-mono border border-zinc-700/60">
             {token.slice(1, -1)}
           </code>
         );
       }
 
-      // Bold **bold**
       if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
         return (
           <strong key={i} className="font-semibold text-white">
@@ -177,77 +190,93 @@ export default function BugReportCard({
   };
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center p-3 md:p-6 select-text">
+    <div className="h-screen w-screen flex items-center justify-center p-3 sm:p-5 md:p-8 select-text">
       <div
         className={`max-w-4xl w-full ${
           isExpanded ? 'h-[92vh]' : 'h-[86vh]'
-        } ${severityColors[report.severity]} border-2 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ${
-          isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-40 pointer-events-none'
+        } bg-zinc-950/95 border ${severityCardBorders[report.severity]} rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${
+          isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-35 pointer-events-none'
         }`}
       >
-        <div className="h-full overflow-y-auto p-5 md:p-8 text-white flex flex-col justify-between">
+        <div className="h-full overflow-y-auto p-6 md:p-8 text-white flex flex-col justify-between scrollbar-thin">
           <div>
             {/* Header */}
-            <div className="mb-6 border-b border-zinc-800 pb-5">
-              <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <div className="mb-6 border-b border-zinc-800/80 pb-6">
+              <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`${severityBadgeColors[report.severity]} px-3 py-1 rounded text-xs font-bold uppercase tracking-wider`}
+                    className={`${severityBadgeStyles[report.severity]} border px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold uppercase tracking-wider`}
                   >
                     {report.severity}
                   </span>
-                  <span className="text-zinc-400 text-xs font-mono bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded">
+                  <span className="text-zinc-400 text-xs font-mono bg-zinc-900 border border-zinc-800 px-2.5 py-0.5 rounded-md">
                     {report.protocol}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center gap-1.5">
                   {onToggleLock && (
                     <button
                       onClick={onToggleLock}
-                      className={`transition-colors px-3 py-1 rounded text-xs font-medium border flex items-center gap-1 ${
+                      className={`transition-colors px-2.5 py-1 rounded-md text-xs font-mono border flex items-center gap-1.5 ${
                         isLocked
-                          ? 'bg-blue-500/20 text-blue-300 border-blue-500 shadow-sm'
-                          : 'bg-zinc-900 text-zinc-400 hover:text-white border-zinc-700 hover:bg-zinc-800'
+                          ? 'bg-sky-500/15 text-sky-400 border-sky-500/40'
+                          : 'bg-zinc-900 text-zinc-400 hover:text-white border-zinc-800 hover:bg-zinc-800'
                       }`}
                       aria-label="Toggle card scroll lock"
-                      title="Lock onto this card to read without jumping to next card (L)"
+                      title="Lock card to scroll text without jumping to next card (L)"
                     >
-                      <span>{isLocked ? '🔒 Locked' : '🔓 Lock'}</span>
+                      {isLocked ? <LockIcon size={12} /> : <UnlockIcon size={12} />}
+                      <span>{isLocked ? 'Locked' : 'Lock'}</span>
                     </button>
                   )}
+
                   <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="text-zinc-300 hover:text-white transition-colors px-3 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded text-xs font-medium"
+                    className="text-zinc-400 hover:text-white transition-colors px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-md text-xs font-mono flex items-center gap-1"
                     aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                    title={isExpanded ? 'Collapse card' : 'Expand card'}
                   >
-                    {isExpanded ? 'Collapse' : 'Expand'}
+                    {isExpanded ? <CollapseIcon size={12} /> : <ExpandIcon size={12} />}
+                    <span className="hidden sm:inline">{isExpanded ? 'Collapse' : 'Expand'}</span>
                   </button>
+
                   <button
                     onClick={onToggleBookmark}
-                    className={`transition-colors px-3 py-1 rounded text-xs font-medium border ${
+                    className={`transition-colors px-2.5 py-1 rounded-md text-xs font-mono border flex items-center gap-1.5 ${
                       isBookmarked
-                        ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500'
-                        : 'bg-zinc-900 text-zinc-400 hover:text-white border-zinc-700 hover:bg-zinc-800'
+                        ? 'bg-zinc-800 text-white border-zinc-700'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white border-zinc-800 hover:bg-zinc-800'
                     }`}
                     aria-label="Toggle bookmark"
+                    title="Bookmark report (B)"
                   >
-                    {isBookmarked ? '★ Saved' : '☆ Save'}
+                    <BookmarkIcon size={12} filled={isBookmarked} />
+                    <span>{isBookmarked ? 'Saved' : 'Save'}</span>
                   </button>
                 </div>
               </div>
 
-              <h1 className="text-xl md:text-2xl font-bold mb-3 leading-snug text-white tracking-tight">
+              <h1 className="text-xl md:text-2xl font-bold mb-3 leading-snug text-zinc-100 tracking-tight font-sans">
                 {report.title}
               </h1>
 
               <div className="flex flex-wrap items-center gap-2 text-zinc-400 text-xs font-mono">
                 {report.auditor && (
-                  <span className="text-zinc-300">Auditor: <span className="text-white font-semibold">{report.auditor}</span></span>
+                  <span className="text-zinc-400">
+                    Auditor: <span className="text-zinc-200 font-medium">{report.auditor}</span>
+                  </span>
                 )}
                 {report.date && (
                   <>
-                    <span className="text-zinc-600">•</span>
+                    <span className="text-zinc-600">/</span>
                     <span>{report.date}</span>
+                  </>
+                )}
+                {isLocked && (
+                  <>
+                    <span className="text-zinc-600">/</span>
+                    <span className="text-sky-400 font-semibold">[Scroll Locked]</span>
                   </>
                 )}
               </div>
@@ -258,7 +287,7 @@ export default function BugReportCard({
               {/* Description */}
               {report.description && (
                 <div>
-                  <h2 className={`text-xs font-bold mb-2 uppercase tracking-wider ${severityTextColors[report.severity]}`}>
+                  <h2 className={`text-[11px] font-mono font-bold mb-2 uppercase tracking-widest ${severityHeadingColors[report.severity]}`}>
                     Description
                   </h2>
                   <div className="text-zinc-300">
@@ -270,7 +299,7 @@ export default function BugReportCard({
               {/* Impact */}
               {report.impact && (
                 <div>
-                  <h2 className={`text-xs font-bold mb-2 uppercase tracking-wider ${severityTextColors[report.severity]}`}>
+                  <h2 className={`text-[11px] font-mono font-bold mb-2 uppercase tracking-widest ${severityHeadingColors[report.severity]}`}>
                     Impact
                   </h2>
                   <div className="text-zinc-300">
@@ -282,7 +311,7 @@ export default function BugReportCard({
               {/* Recommendation */}
               {report.recommendation && (
                 <div>
-                  <h2 className={`text-xs font-bold mb-2 uppercase tracking-wider ${severityTextColors[report.severity]}`}>
+                  <h2 className={`text-[11px] font-mono font-bold mb-2 uppercase tracking-widest ${severityHeadingColors[report.severity]}`}>
                     Recommendation
                   </h2>
                   <div className="text-zinc-300">
@@ -294,7 +323,7 @@ export default function BugReportCard({
               {/* Tags */}
               {report.tags && report.tags.length > 0 && (
                 <div>
-                  <h2 className={`text-xs font-bold mb-2 uppercase tracking-wider ${severityTextColors[report.severity]}`}>
+                  <h2 className={`text-[11px] font-mono font-bold mb-2 uppercase tracking-widest ${severityHeadingColors[report.severity]}`}>
                     Tags
                   </h2>
                   <div className="flex flex-wrap gap-1.5">
@@ -302,7 +331,7 @@ export default function BugReportCard({
                       <button
                         key={index}
                         onClick={() => onTagClick?.(tag)}
-                        className="bg-zinc-900 border border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-white px-2.5 py-1 rounded text-xs font-mono transition-colors"
+                        className="bg-zinc-900 border border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 px-2.5 py-1 rounded-md text-xs font-mono transition-colors"
                       >
                         #{tag}
                       </button>
@@ -315,19 +344,22 @@ export default function BugReportCard({
 
           {/* Footer Link */}
           {report.url && (
-            <div className="pt-6 mt-6 border-t border-zinc-800 flex justify-between items-center flex-wrap gap-3">
+            <div className="pt-6 mt-8 border-t border-zinc-800/80 flex justify-between items-center flex-wrap gap-3">
               <a
                 href={report.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg font-semibold text-xs tracking-wide transition-colors"
+                className="inline-flex items-center gap-1.5 bg-zinc-100 text-zinc-950 hover:bg-white px-3.5 py-1.5 rounded-lg font-mono font-semibold text-xs transition-colors"
               >
                 <span>View on Solodit</span>
-                <span className="text-sm">↗</span>
+                <ExternalLinkIcon size={12} />
               </a>
-              <span className="text-xs text-zinc-500 font-mono">
-                {isLocked ? '🔒 Card locked to read • Press L to unlock' : 'Press L to lock card • B to save • R for random • ↑/↓ to scroll'}
-              </span>
+
+              <div className="text-xs text-zinc-500 font-mono">
+                {isLocked
+                  ? 'Card locked to scroll text (L to unlock)'
+                  : 'L to lock | B to save | R for random | Up/Down to navigate'}
+              </div>
             </div>
           )}
         </div>

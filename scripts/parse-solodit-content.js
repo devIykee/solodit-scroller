@@ -34,7 +34,7 @@ function getReportsDir() {
 
 // Clone and parse Solodit content repository
 async function parseSoloditReports() {
-  console.log('🚀 Parsing Solodit content repository...');
+  console.log('[*] Parsing Solodit content repository...');
 
   const reportsDir = getReportsDir();
 
@@ -71,7 +71,7 @@ async function parseSoloditReports() {
     }
   }
 
-  console.log(`✅ Parsed ${reports.length} vulnerability reports`);
+  console.log(`[+] Parsed ${reports.length} vulnerability reports`);
   return reports;
 }
 
@@ -258,8 +258,8 @@ async function main() {
   }
 
   fs.writeFileSync(outputPath, JSON.stringify(reports, null, 2));
-  console.log(`💾 Saved ${reports.length} reports to ${outputPath}`);
-  console.log('\n📊 Report statistics:');
+  console.log(`[+] Saved ${reports.length} reports to ${outputPath}`);
+  console.log('\nReport statistics:');
 
   const bySeverity = reports.reduce((acc, r) => {
     acc[r.severity] = (acc[r.severity] || 0) + 1;

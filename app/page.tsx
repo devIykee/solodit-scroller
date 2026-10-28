@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import BugReportCard from './components/BugReportCard';
 import SearchBar from './components/SearchBar';
 import { BugReport } from './types';
+import { SearchIcon, LockIcon, UnlockIcon } from './components/Icons';
 
 export default function Home() {
   const [reports, setReports] = useState<BugReport[]>([]);
@@ -293,7 +294,7 @@ export default function Home() {
       {filteredReports.length === 0 ? (
         <div className="h-screen w-screen flex flex-col items-center justify-center bg-black text-white p-6">
           <div className="max-w-md text-center space-y-4">
-            <div className="text-4xl">🔍</div>
+            <SearchIcon size={36} className="mx-auto text-zinc-600 mb-2" />
             <h2 className="text-xl font-bold font-mono">No Vulnerabilities Found</h2>
             <p className="text-zinc-400 text-sm">
               {showBookmarksOnly
@@ -390,14 +391,15 @@ export default function Home() {
 
           <button
             onClick={() => setIsLocked(prev => !prev)}
-            className={`px-2.5 py-0.5 rounded transition-all flex items-center gap-1 font-semibold ${
+            className={`px-2.5 py-0.5 rounded transition-all flex items-center gap-1.5 font-semibold ${
               isLocked
-                ? 'bg-blue-500/25 text-blue-300 border border-blue-500/70 shadow-sm'
+                ? 'bg-sky-500/15 text-sky-400 border border-sky-500/40 shadow-sm'
                 : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
             }`}
             title="Lock current card to scroll and read without jumping (L)"
           >
-            <span>{isLocked ? '🔒 Locked' : '🔓 Lock (L)'}</span>
+            {isLocked ? <LockIcon size={12} /> : <UnlockIcon size={12} />}
+            <span>{isLocked ? 'Locked' : 'Lock (L)'}</span>
           </button>
         </div>
       )}

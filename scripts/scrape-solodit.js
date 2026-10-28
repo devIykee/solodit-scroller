@@ -3,10 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 async function scrapeSolodit() {
-  console.log('🚀 Starting Solodit scraper...');
+  console.log('[*] Starting Solodit scraper...');
 
   try {
-    console.log('📡 Fetching Solodit...');
+    console.log('[*] Fetching Solodit...');
     const response = await fetch('https://solodit.cyfrin.io/', {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -18,19 +18,19 @@ async function scrapeSolodit() {
     }
 
     const html = await response.text();
-    console.log('✅ Page loaded');
+    console.log('[+] Page loaded');
 
     // Try to extract Next.js data
     const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
 
     if (nextDataMatch) {
-      console.log('🔍 Found Next.js data, parsing...');
+      console.log('[*] Found Next.js data, parsing...');
       try {
         const data = JSON.parse(nextDataMatch[1]);
         const reports = extractFromNextData(data);
 
         if (reports.length > 0) {
-          console.log(`✅ Extracted ${reports.length} reports from Next.js data`);
+          console.log(`[+] Extracted ${reports.length} reports from Next.js data`);
           saveReports(reports);
           return reports;
         }
@@ -40,7 +40,7 @@ async function scrapeSolodit() {
     }
 
     // Fallback: try API endpoints
-    console.log('🔄 Trying API endpoints...');
+    console.log('[*] Trying API endpoints...');
     const apiEndpoints = [
       'https://solodit.cyfrin.io/api/findings',
       'https://solodit.cyfrin.io/api/issues',
@@ -60,24 +60,24 @@ async function scrapeSolodit() {
           const reports = transformApiData(json);
 
           if (reports.length > 0) {
-            console.log(`✅ Got ${reports.length} reports from ${endpoint}`);
+            console.log(`[+] Got ${reports.length} reports from ${endpoint}`);
             saveReports(reports);
             return reports;
           }
         }
       } catch (e) {
-        console.log(`❌ ${endpoint} failed: ${e.message}`);
+        console.log(`[-] ${endpoint} failed: ${e.message}`);
       }
     }
 
-    console.log('⚠️  Could not fetch real data, generating sample data...');
+    console.log('[*] Could not fetch real data, generating sample data...');
     const sampleReports = generateSampleData();
     saveReports(sampleReports);
     return sampleReports;
 
   } catch (error) {
-    console.error('❌ Scraping failed:', error.message);
-    console.log('⚠️  Generating sample data as fallback...');
+    console.error('[-] Scraping failed:', error.message);
+    console.log('[*] Generating sample data as fallback...');
     const sampleReports = generateSampleData();
     saveReports(sampleReports);
     return sampleReports;
@@ -266,13 +266,13 @@ function saveReports(reports) {
   }
 
   fs.writeFileSync(outputPath, JSON.stringify(reports, null, 2));
-  console.log(`💾 Saved ${reports.length} reports to data/solodit-reports.json`);
+  console.log(`[+] Saved ${reports.length} reports to data/solodit-reports.json`);
 }
 
 if (require.main === module) {
   scrapeSolodit()
     .then(reports => {
-      console.log('\n🎉 Complete!');
+      console.log('\n[+] Complete!');
       console.log(`Total: ${reports.length} bug reports`);
       process.exit(0);
     })
