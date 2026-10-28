@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "parse:solodit": "node scripts/parse-solodit-content.js"
+    "parse:solodit": "node scripts/parse-solodit-content.js",
+    "pull:live": "node scripts/pull-solodit-live.js"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
+    "devalue": "^6.0.3",
     "next": "16.4.3",
     "puppeteer": "^23.0.0",
     "react": "19.3.0",

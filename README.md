@@ -22,7 +22,10 @@ TikTok-style doom-scrolling interface for browsing smart contract security vulne
 # Install dependencies
 npm install
 
-# (Optional) Re-parse or update Solodit reports
+# (Optional) Pull latest findings from live Solodit (55,403 database)
+npm run pull:live -- --pages 30
+
+# (Optional) Re-parse Solodit content repository
 npm run parse:solodit
 
 # Run development server
