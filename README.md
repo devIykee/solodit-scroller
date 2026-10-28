@@ -77,7 +77,7 @@ The script:
    ```bash
    git add .
    git commit -m "feat: linear-style reading experience with expandable controls and no emojis"
-   git push origin master
+   git push origin main
    ```
 2. Import the project in [vercel.com](https://vercel.com/new).
 3. Deploy! Next.js will prerender the static API and pages for instant global edge delivery.
