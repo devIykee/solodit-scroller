@@ -306,21 +306,21 @@ export default function Home() {
       onTouchEnd={handleTouchEnd}
     >
       {/* Top Center Feeds Navigation (TikTok / Twitter style) */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-7 select-none">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center bg-zinc-950/90 backdrop-blur-md border border-zinc-800/90 rounded-full px-4 py-1.5 shadow-2xl gap-5 sm:gap-6 select-none">
         <button
           onClick={() => handleSourceChange('local')}
-          className={`relative flex flex-col items-center py-1 transition-all duration-200 cursor-pointer ${
+          className={`relative flex flex-col items-center px-2 py-0.5 transition-all duration-200 cursor-pointer ${
             selectedSource === 'local'
               ? 'text-white font-bold'
-              : 'text-zinc-500 hover:text-zinc-300 font-medium'
+              : 'text-zinc-400 hover:text-zinc-200 font-medium'
           }`}
           title="Browse local Solodit findings (6,107)"
         >
-          <span className="text-sm sm:text-base tracking-wide font-mono">
+          <span className="text-xs sm:text-sm tracking-wide font-mono">
             Local
           </span>
           <span
-            className={`h-0.5 w-6 rounded-full mt-1 transition-all duration-200 ${
+            className={`h-0.5 w-5 rounded-full mt-0.5 transition-all duration-200 ${
               selectedSource === 'local'
                 ? 'bg-white scale-100 opacity-100'
                 : 'bg-transparent scale-0 opacity-0'
@@ -328,17 +328,19 @@ export default function Home() {
           />
         </button>
 
+        <span className="text-zinc-700 text-xs select-none">|</span>
+
         <button
           onClick={() => handleSourceChange('live')}
-          className={`relative flex flex-col items-center py-1 transition-all duration-200 cursor-pointer ${
+          className={`relative flex flex-col items-center px-2 py-0.5 transition-all duration-200 cursor-pointer ${
             selectedSource === 'live'
               ? 'text-white font-bold'
-              : 'text-zinc-500 hover:text-zinc-300 font-medium'
+              : 'text-zinc-400 hover:text-zinc-200 font-medium'
           }`}
           title="Browse live additions from Solodit (300)"
         >
           <div className="flex items-center gap-1.5">
-            <span className="text-sm sm:text-base tracking-wide font-mono">
+            <span className="text-xs sm:text-sm tracking-wide font-mono">
               Live
             </span>
             <span className="relative flex h-1.5 w-1.5">
@@ -347,7 +349,7 @@ export default function Home() {
             </span>
           </div>
           <span
-            className={`h-0.5 w-6 rounded-full mt-1 transition-all duration-200 ${
+            className={`h-0.5 w-5 rounded-full mt-0.5 transition-all duration-200 ${
               selectedSource === 'live'
                 ? 'bg-emerald-400 scale-100 opacity-100'
                 : 'bg-transparent scale-0 opacity-0'

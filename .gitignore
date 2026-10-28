@@ -41,3 +41,4 @@ data/*.json
 .idea
 *.swp
 *.swo
+.env*
