@@ -33,6 +33,7 @@ next-env.d.ts
 
 # Data
 data/*.json
+!data/solodit-reports.json
 !data/.gitkeep
 
 # IDE

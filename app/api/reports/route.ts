@@ -3,69 +3,113 @@ import { BugReport } from '../../types';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
+let cachedReports: BugReport[] | null = null;
+
+function loadReports(): BugReport[] {
+  if (cachedReports) {
+    return cachedReports;
+  }
+
+  const dataPath = join(process.cwd(), 'data', 'solodit-reports.json');
+  if (existsSync(dataPath)) {
+    try {
+      const data = readFileSync(dataPath, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedReports = parsed;
+        console.log(`Loaded and cached ${parsed.length} reports from solodit-reports.json`);
+        return cachedReports!;
+      }
+    } catch (err) {
+      console.error('Failed reading/parsing solodit-reports.json:', err);
+    }
+  }
+
+  return [];
+}
+
 export async function GET() {
   try {
-    // Try to read from scraped data file
-    const dataPath = join(process.cwd(), 'data', 'solodit-reports.json');
+    let reports = loadReports();
 
-    if (existsSync(dataPath)) {
-      const data = readFileSync(dataPath, 'utf-8');
-      const reports = JSON.parse(data);
+    if (reports.length === 0) {
+      // Try to fetch from Code4rena (public vulnerability database)
+      try {
+        const c4Response = await fetch('https://raw.githubusercontent.com/code-423n4/code423n4.com/main/_data/findings/findings.json', {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
 
-      if (Array.isArray(reports) && reports.length > 0) {
-        console.log(`Loaded ${reports.length} reports from file`);
-        return NextResponse.json(reports);
-      }
-    }
-
-    // Try to fetch from Code4rena (public vulnerability database)
-    try {
-      const c4Response = await fetch('https://raw.githubusercontent.com/code-423n4/code423n4.com/main/_data/findings/findings.json', {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-      });
-
-      if (c4Response.ok) {
-        const c4Data = await c4Response.json();
-        const transformed = transformCode4renaData(c4Data);
-        if (transformed.length > 0) {
-          console.log(`Loaded ${transformed.length} reports from Code4rena`);
-          return NextResponse.json(transformed);
+        if (c4Response.ok) {
+          const c4Data = await c4Response.json();
+          const transformed = transformCode4renaData(c4Data);
+          if (transformed.length > 0) {
+            console.log(`Loaded ${transformed.length} reports from Code4rena`);
+            reports = transformed;
+          }
         }
+      } catch (e) {
+        console.error('Code4rena fetch failed:', e);
       }
-    } catch (e) {
-      console.error('Code4rena fetch failed:', e);
     }
 
-    // Try Immunefi vulnerability data
-    try {
-      const immunefiResponse = await fetch('https://immunefi.com/api/bounties/', {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-      });
+    if (reports.length === 0) {
+      // Try Immunefi vulnerability data
+      try {
+        const immunefiResponse = await fetch('https://immunefi.com/api/bounties/', {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
 
-      if (immunefiResponse.ok) {
-        const immunefiData = await immunefiResponse.json();
-        const transformed = transformImmunefiData(immunefiData);
-        if (transformed.length > 0) {
-          console.log(`Loaded ${transformed.length} reports from Immunefi`);
-          return NextResponse.json(transformed);
+        if (immunefiResponse.ok) {
+          const immunefiData = await immunefiResponse.json();
+          const transformed = transformImmunefiData(immunefiData);
+          if (transformed.length > 0) {
+            console.log(`Loaded ${transformed.length} reports from Immunefi`);
+            reports = transformed;
+          }
         }
+      } catch (e) {
+        console.error('Immunefi fetch failed:', e);
       }
-    } catch (e) {
-      console.error('Immunefi fetch failed:', e);
     }
 
-    // Fallback to curated sample data based on real vulnerabilities
-    console.log('Using curated sample data');
-    return NextResponse.json(getCuratedSamples());
+    if (reports.length === 0) {
+      // Fallback to curated sample data based on real vulnerabilities
+      reports = getCuratedSamples();
+    }
 
+    return NextResponse.json(reports);
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(getCuratedSamples());
   }
 }
 
-function transformCode4renaData(data: any[]): BugReport[] {
-  return data.slice(0, 50).map((item: any, index: number) => ({
+interface Code4renaFinding {
+  id?: string;
+  title?: string;
+  severity?: string;
+  risk?: string;
+  contest?: string;
+  project?: string;
+  date?: string;
+  description?: string;
+  body?: string;
+  impact?: string;
+  mitigation?: string;
+  labels?: string[];
+  url?: string;
+}
+
+interface ImmunefiBounty {
+  id?: string;
+  project?: string;
+  description?: string;
+  maxBounty?: string;
+  url?: string;
+}
+
+function transformCode4renaData(data: Code4renaFinding[]): BugReport[] {
+  return data.slice(0, 50).map((item, index: number) => ({
     id: item.id || `c4-${index}`,
     title: item.title || 'Untitled Vulnerability',
     severity: normalizeSeverity(item.severity || item.risk || 'medium'),
@@ -80,10 +124,10 @@ function transformCode4renaData(data: any[]): BugReport[] {
   }));
 }
 
-function transformImmunefiData(data: any): BugReport[] {
+function transformImmunefiData(data: { bounties?: ImmunefiBounty[] } | ImmunefiBounty[]): BugReport[] {
   const bounties = Array.isArray(data) ? data : data.bounties || [];
 
-  return bounties.slice(0, 50).map((item: any, index: number) => ({
+  return bounties.slice(0, 50).map((item, index: number) => ({
     id: item.id || `immunefi-${index}`,
     title: item.project || 'Bug Bounty Program',
     severity: 'high',

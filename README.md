@@ -4,19 +4,25 @@ TikTok-style doom-scrolling interface for browsing smart contract security vulne
 
 ## Features
 
-- 📱 **TikTok-style vertical scrolling** - Swipe, scroll, or use arrow keys
-- 🎨 **Beautiful gradient cards** - Color-coded by severity (Critical, High, Medium, Low)
-- ⚡ **Smooth animations** - Buttery 60fps transitions
-- 📊 **Progress indicator** - See where you are in the feed
-- 🎯 **Detailed reports** - Full vulnerability descriptions, impacts, and recommendations
-- 🏷️ **Smart tagging** - Filter and categorize vulnerabilities
-- 📱 **Fully responsive** - Works on desktop and mobile
+- 📱 **TikTok-style vertical scrolling** - Swipe, scroll, or use arrow / vim keys (`j` / `k`)
+- 📚 **6,100+ Real Solodit Reports** - Extracted from the Solodit vulnerability repository across 17 top security firms
+- ⚡ **Virtualized 60fps rendering** - Butter-smooth scrolling with zero DOM bloat even with thousands of findings
+- 🎨 **Clean high-contrast theme** - Color-coded borders by severity (Critical, High, Medium, Low, Info)
+- 💻 **Syntax-highlighted code blocks** - One-click code copying for exploits and proofs of concept
+- 🔍 **Real-time search & filters** - Search by protocol, title, auditor, tag, or description
+- 🏷️ **Interactive vulnerability tags** - Click tags like `#reentrancy`, `#oracle`, `#bridge` to filter findings instantly
+- 🎲 **Random vulnerability jump** - Hit `R` or click Random to study unexpected bugs
+- ★ **Local bookmarking** - Save findings with `B` and resume exactly where you left off
+- 🔗 **Direct Solodit links** - One-click jump to full issues on Solodit
 
 ## Quick Start
 
 ```bash
 # Install dependencies
 npm install
+
+# (Optional) Re-parse or update Solodit reports
+npm run parse:solodit
 
 # Run development server
 npm run dev
@@ -30,121 +36,54 @@ npm start
 
 Open [http://localhost:3000](http://localhost:3000) to start doom-scrolling bug reports!
 
-## Controls
+## Controls & Keyboard Shortcuts
 
-- **Mouse wheel** - Scroll up/down to navigate
-- **Touch gestures** - Swipe up/down on mobile
-- **Arrow keys** - Up/Down to navigate
-- **Spacebar** - Next report
-- **Progress dots** - Click to jump to specific reports
+| Key / Gesture | Action |
+| --- | --- |
+| `↓` / `J` / `Space` | Next vulnerability |
+| `↑` / `K` / `Shift+Space` | Previous vulnerability |
+| `B` | Bookmark / Save current report |
+| `R` | Jump to random vulnerability |
+| `/` | Open search input |
+| `?` | Show keyboard shortcuts modal |
+| `Esc` | Close search or modal |
+| Mouse Wheel | Scroll smoothly between cards |
+| Touch Swipe | Swipe up/down on mobile |
+
+## Dataset & Solodit Content Parser
+
+The app includes an automated parser script [`scripts/parse-solodit-content.js`](scripts/parse-solodit-content.js) that reads markdown vulnerability reports from [Solodit's content repository](https://github.com/solodit/solodit_content.git):
+
+```bash
+npm run parse:solodit
+```
+
+The script:
+1. Detects or clones `solodit/solodit_content` (shallow depth 1)
+2. Parses vulnerability findings across all auditor directories (`0x52`, `AuditOne`, `Hexens`, `Pashov Audit Group`, `Trust Security`, etc.)
+3. Extracts descriptions, impact scenarios, remediation steps, and code snippets
+4. Categorizes tags (reentrancy, access-control, oracle, bridges, flash loans, etc.)
+5. Saves the parsed JSON to `data/solodit-reports.json`
 
 ## Deploy to Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/solodit-scroller)
-
-### Manual Deployment
-
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Import your repository
-4. Deploy!
-
-Vercel will automatically:
-- Build your Next.js app
-- Deploy to a global CDN
-- Provide you with a production URL
-
-## Data Source
-
-Currently using sample data. To integrate real Solodit data:
-
-### Option 1: Web Scraping (Recommended)
-
-Install scraping dependencies:
-
-```bash
-npm install puppeteer cheerio
-```
-
-Update `app/api/reports/route.ts` to scrape Solodit:
-
-```typescript
-import puppeteer from 'puppeteer';
-
-export async function GET() {
-  const browser = await puppeteer.launch();
-  const page = await browser.newPage();
-  await page.goto('https://solodit.cyfrin.io');
-  
-  // Scrape reports from the page
-  const reports = await page.evaluate(() => {
-    // Your scraping logic here
-  });
-  
-  await browser.close();
-  return NextResponse.json(reports);
-}
-```
-
-### Option 2: API Integration
-
-If Solodit provides an API, update the route to call it:
-
-```typescript
-export async function GET() {
-  const response = await fetch('https://api.solodit.cyfrin.io/reports');
-  const data = await response.json();
-  return NextResponse.json(data);
-}
-```
-
-### Option 3: Database Sync
-
-Set up a cron job or scheduled function to periodically sync Solodit data to your database, then serve from there.
+1. Push your repository to GitHub:
+   ```bash
+   git add .
+   git commit -m "feat: real solodit vulnerability data and virtualized scroller"
+   git push origin master
+   ```
+2. Import the project in [vercel.com](https://vercel.com/new).
+3. Deploy! Next.js will prerender the static API and pages for instant global edge delivery.
 
 ## Tech Stack
 
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Utility-first styling
-- **Vercel** - Deployment platform
-
-## Customization
-
-### Change Colors
-
-Edit severity colors in `app/components/BugReportCard.tsx`:
-
-```typescript
-const severityColors = {
-  critical: 'from-red-600 to-red-800',
-  high: 'from-orange-500 to-orange-700',
-  // ... customize as needed
-};
-```
-
-### Add Filters
-
-Add filter buttons to `app/page.tsx` to filter by severity, protocol, or tags.
-
-### Enable Bookmarks
-
-Add a bookmark feature by storing favorites in localStorage or a backend database.
-
-## License
-
-MIT
-
-## Contributing
-
-Pull requests welcome! Feel free to add:
-- Real Solodit integration
-- Filters and search
-- Bookmarking system
-- Share functionality
-- Dark/light mode toggle
-- More animations
+- **Next.js 16** - Turbopack App Router with static route optimization
+- **React 19** - Modern concurrent hooks and memoized state
+- **TypeScript 5** - Full type safety
+- **Tailwind CSS 4** - Modern dark UI design
+- **ESLint 9** - Clean code standard
 
 ---
 
-Built with ❤️ for security researchers who like to doom-scroll vulnerabilities
+Built with ❤️ for security researchers who love to doom-scroll smart contract vulnerabilities.

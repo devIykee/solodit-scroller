@@ -1,73 +1,116 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import BugReportCard from './components/BugReportCard';
 import SearchBar from './components/SearchBar';
 import { BugReport } from './types';
 
 export default function Home() {
   const [reports, setReports] = useState<BugReport[]>([]);
-  const [filteredReports, setFilteredReports] = useState<BugReport[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSeverity, setSelectedSeverity] = useState('all');
+  const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+
+  // Lazy state initializers to avoid setState in effects
+  const [bookmarks, setBookmarks] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const saved = localStorage.getItem('bookmarks');
+      if (saved) {
+        return new Set(JSON.parse(saved));
+      }
+    } catch {
+      // ignore
+    }
+    return new Set();
+  });
+
+  const [currentIndex, setCurrentIndex] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const lastPosition = localStorage.getItem('lastPosition');
+      if (lastPosition) {
+        const parsed = parseInt(lastPosition, 10);
+        if (!isNaN(parsed) && parsed >= 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return 0;
+  });
+
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number>(0);
   const isScrolling = useRef(false);
+  const wheelTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Load data on mount
   useEffect(() => {
-    // Load bookmarks from localStorage
-    const saved = localStorage.getItem('bookmarks');
-    if (saved) {
-      setBookmarks(new Set(JSON.parse(saved)));
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        const response = await fetch('/api/reports');
+        const data = await response.json();
+        if (isMounted && Array.isArray(data)) {
+          setReports(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch reports:', error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     }
 
-    // Load last position
-    const lastPosition = localStorage.getItem('lastPosition');
-    if (lastPosition) {
-      setCurrentIndex(parseInt(lastPosition));
-    }
+    loadData();
 
-    fetchReports();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  useEffect(() => {
-    // Filter reports based on search query
-    if (searchQuery.trim() === '') {
-      setFilteredReports(reports);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = reports.filter(report =>
+  // Compute filtered reports cleanly as derived state with useMemo
+  const filteredReports = useMemo(() => {
+    let result = reports;
+
+    if (showBookmarksOnly) {
+      result = result.filter(r => bookmarks.has(r.id));
+    }
+
+    if (selectedSeverity !== 'all') {
+      result = result.filter(r => r.severity === selectedSeverity);
+    }
+
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase().replace(/^#/, '');
+      result = result.filter(report =>
         report.title.toLowerCase().includes(query) ||
         report.description.toLowerCase().includes(query) ||
         report.protocol.toLowerCase().includes(query) ||
+        report.auditor.toLowerCase().includes(query) ||
         report.severity.toLowerCase().includes(query) ||
         report.tags.some(tag => tag.toLowerCase().includes(query))
       );
-      setFilteredReports(filtered);
-      setCurrentIndex(0); // Reset to first result when searching
     }
-  }, [searchQuery, reports]);
 
-  const fetchReports = async () => {
-    try {
-      const response = await fetch('/api/reports');
-      const data = await response.json();
-      setReports(data);
-      setFilteredReports(data);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Failed to fetch reports:', error);
-      setIsLoading(false);
-    }
-  };
+    return result;
+  }, [reports, searchQuery, selectedSeverity, showBookmarksOnly, bookmarks]);
 
-  const scrollToIndex = (index: number) => {
+  // Keep active index in bounds
+  const activeIndex = useMemo(() => {
+    if (filteredReports.length === 0) return 0;
+    return currentIndex >= filteredReports.length ? 0 : currentIndex;
+  }, [filteredReports.length, currentIndex]);
+
+  const scrollToIndex = useCallback((index: number) => {
     if (isScrolling.current || filteredReports.length === 0) return;
     isScrolling.current = true;
 
-    // Infinite scroll: wrap around
+    // Wrap around for infinite scrolling
     let newIndex = index;
     if (newIndex < 0) {
       newIndex = filteredReports.length - 1;
@@ -76,31 +119,73 @@ export default function Home() {
     }
 
     setCurrentIndex(newIndex);
-    localStorage.setItem('lastPosition', newIndex.toString());
+    try {
+      localStorage.setItem('lastPosition', newIndex.toString());
+    } catch {
+      // ignore
+    }
 
     setTimeout(() => {
       isScrolling.current = false;
-    }, 500);
-  };
+    }, 400);
+  }, [filteredReports.length]);
 
-  const toggleBookmark = (reportId: string) => {
-    const newBookmarks = new Set(bookmarks);
-    if (newBookmarks.has(reportId)) {
-      newBookmarks.delete(reportId);
-    } else {
-      newBookmarks.add(reportId);
-    }
-    setBookmarks(newBookmarks);
-    localStorage.setItem('bookmarks', JSON.stringify(Array.from(newBookmarks)));
-  };
+  const handleRandom = useCallback(() => {
+    if (filteredReports.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * filteredReports.length);
+    scrollToIndex(randomIndex);
+  }, [filteredReports.length, scrollToIndex]);
+
+  const toggleBookmark = useCallback((reportId: string) => {
+    setBookmarks(prev => {
+      const next = new Set(prev);
+      if (next.has(reportId)) {
+        next.delete(reportId);
+      } else {
+        next.add(reportId);
+      }
+      try {
+        localStorage.setItem('bookmarks', JSON.stringify(Array.from(next)));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   const handleWheel = (e: React.WheelEvent) => {
-    if (Math.abs(e.deltaY) > 10) {
-      if (e.deltaY > 0) {
-        scrollToIndex(currentIndex + 1);
-      } else {
-        scrollToIndex(currentIndex - 1);
+    // If user locked onto the card, NEVER switch cards on wheel
+    if (isLocked || isScrolling.current) return;
+
+    // Check if scrolling inside a scrollable card container
+    const scrollContainer = (e.target as HTMLElement)?.closest('.overflow-y-auto');
+    if (scrollContainer) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      const isScrollable = scrollHeight > clientHeight + 10;
+
+      if (isScrollable) {
+        // If scrolling down but haven't reached the end of the report content
+        if (e.deltaY > 0 && scrollTop + clientHeight < scrollHeight - 20) {
+          return;
+        }
+        // If scrolling up but haven't reached the top of the report content
+        if (e.deltaY < 0 && scrollTop > 20) {
+          return;
+        }
       }
+    }
+
+    if (Math.abs(e.deltaY) > 25) {
+      if (e.deltaY > 0) {
+        scrollToIndex(activeIndex + 1);
+      } else {
+        scrollToIndex(activeIndex - 1);
+      }
+
+      if (wheelTimeout.current) clearTimeout(wheelTimeout.current);
+      wheelTimeout.current = setTimeout(() => {
+        isScrolling.current = false;
+      }, 350);
     }
   };
 
@@ -109,136 +194,213 @@ export default function Home() {
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isLocked) return;
+
+    const scrollContainer = (e.target as HTMLElement)?.closest('.overflow-y-auto');
+    if (scrollContainer) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      if (scrollHeight > clientHeight + 10) {
+        if (scrollTop > 15 && scrollTop + clientHeight < scrollHeight - 15) {
+          return;
+        }
+      }
+    }
+
     const touchEndY = e.changedTouches[0].clientY;
     const diff = touchStartY.current - touchEndY;
 
-    if (Math.abs(diff) > 50) {
+    if (Math.abs(diff) > 40) {
       if (diff > 0) {
-        scrollToIndex(currentIndex + 1);
+        scrollToIndex(activeIndex + 1);
       } else {
-        scrollToIndex(currentIndex - 1);
+        scrollToIndex(activeIndex - 1);
       }
     }
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown' || e.key === ' ') {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (e.key === 'ArrowDown' || e.key === 'j' || e.key === 'J' || e.key === ' ') {
         e.preventDefault();
-        scrollToIndex(currentIndex + 1);
-      } else if (e.key === 'ArrowUp') {
+        scrollToIndex(activeIndex + 1);
+      } else if (e.key === 'ArrowUp' || e.key === 'k' || e.key === 'K') {
         e.preventDefault();
-        scrollToIndex(currentIndex - 1);
+        scrollToIndex(activeIndex - 1);
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        setIsLocked(prev => !prev);
       } else if (e.key === 'b' || e.key === 'B') {
-        if (filteredReports[currentIndex]) {
-          toggleBookmark(filteredReports[currentIndex].id);
+        if (filteredReports[activeIndex]) {
+          toggleBookmark(filteredReports[activeIndex].id);
         }
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        handleRandom();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, filteredReports]);
+  }, [activeIndex, filteredReports, handleRandom, toggleBookmark, scrollToIndex]);
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-black">
-        <div className="text-white text-2xl">Loading bug reports...</div>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-black text-white font-mono gap-4">
+        <div className="w-10 h-10 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+        <div className="text-sm tracking-widest uppercase text-zinc-400">Loading Solodit Reports...</div>
       </div>
     );
   }
 
-  if (filteredReports.length === 0) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-black">
-        <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-        <div className="text-white text-xl text-center px-4 mt-8">
-          <p className="mb-4">
-            {searchQuery ? `No results found for "${searchQuery}"` : 'No reports found.'}
-          </p>
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="text-blue-400 hover:text-blue-300 underline"
-            >
-              Clear search
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const currentReport = filteredReports[currentIndex];
+  // Calculate virtualized window: render only cards within ±2 range of activeIndex
+  const windowRadius = 2;
+  const startIndex = Math.max(0, activeIndex - windowRadius);
+  const endIndex = Math.min(filteredReports.length - 1, activeIndex + windowRadius);
+  const visibleReports = filteredReports.slice(startIndex, endIndex + 1).map((report, idx) => ({
+    report,
+    originalIndex: startIndex + idx,
+  }));
 
   return (
     <div
       ref={containerRef}
-      className="h-screen w-screen overflow-hidden bg-black relative"
+      className="h-screen w-screen overflow-hidden bg-black relative select-none"
       onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Search Bar */}
-      <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      {/* Top Controls & Navigation */}
+      <SearchBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        selectedSeverity={selectedSeverity}
+        setSelectedSeverity={setSelectedSeverity}
+        showBookmarksOnly={showBookmarksOnly}
+        setShowBookmarksOnly={setShowBookmarksOnly}
+        bookmarksCount={bookmarks.size}
+        totalCount={reports.length}
+        filteredCount={filteredReports.length}
+        onRandom={handleRandom}
+        isLocked={isLocked}
+        setIsLocked={setIsLocked}
+      />
 
-      {/* Report Cards */}
-      <div
-        className="transition-transform duration-500 ease-out"
-        style={{
-          transform: `translateY(-${currentIndex * 100}vh)`,
-        }}
-      >
-        {filteredReports.map((report, index) => (
-          <BugReportCard
-            key={report.id}
-            report={report}
-            isActive={index === currentIndex}
-            isBookmarked={bookmarks.has(report.id)}
-            onToggleBookmark={() => toggleBookmark(report.id)}
-          />
-        ))}
-      </div>
-
-      {/* Progress indicator */}
-      <div className="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-50 max-h-[60vh] overflow-y-auto py-4">
-        {filteredReports.slice(0, 20).map((_, index) => (
-          <button
-            key={index}
-            onClick={() => scrollToIndex(index)}
-            className={`w-2 h-2 rounded-full transition-all ${
-              index === currentIndex
-                ? 'bg-white h-8'
-                : 'bg-white/30 hover:bg-white/50'
-            }`}
-            aria-label={`Go to report ${index + 1}`}
-          />
-        ))}
-        {filteredReports.length > 20 && (
-          <div className="text-white/50 text-xs text-center">
-            +{filteredReports.length - 20}
+      {/* Empty State */}
+      {filteredReports.length === 0 ? (
+        <div className="h-screen w-screen flex flex-col items-center justify-center bg-black text-white p-6">
+          <div className="max-w-md text-center space-y-4">
+            <div className="text-4xl">🔍</div>
+            <h2 className="text-xl font-bold font-mono">No Vulnerabilities Found</h2>
+            <p className="text-zinc-400 text-sm">
+              {showBookmarksOnly
+                ? 'You have not bookmarked any reports matching these criteria yet. Press B on any report to save it.'
+                : `No reports matched "${searchQuery}" with severity "${selectedSeverity}".`}
+            </p>
+            <div className="flex gap-2 justify-center pt-2">
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-mono transition-colors"
+                >
+                  Clear search
+                </button>
+              )}
+              {selectedSeverity !== 'all' && (
+                <button
+                  onClick={() => setSelectedSeverity('all')}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-mono transition-colors"
+                >
+                  Reset severity
+                </button>
+              )}
+              {showBookmarksOnly && (
+                <button
+                  onClick={() => setShowBookmarksOnly(false)}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-mono transition-colors"
+                >
+                  Show all reports
+                </button>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Bookmark indicator */}
-      {currentReport && bookmarks.has(currentReport.id) && (
-        <div className="fixed top-20 right-4 z-50">
-          <div className="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-bold">
-            ★ Bookmarked
-          </div>
+        </div>
+      ) : (
+        /* Virtualized Scroller Container */
+        <div
+          className="relative w-full transition-transform duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={{
+            height: `${filteredReports.length * 100}vh`,
+            transform: `translateY(-${activeIndex * 100}vh)`,
+          }}
+        >
+          {visibleReports.map(({ report, originalIndex }) => (
+            <div
+              key={report.id}
+              className="absolute left-0 w-full h-screen"
+              style={{
+                top: `${originalIndex * 100}vh`,
+              }}
+            >
+              <BugReportCard
+                report={report}
+                isActive={originalIndex === activeIndex}
+                isBookmarked={bookmarks.has(report.id)}
+                isLocked={isLocked}
+                onToggleBookmark={() => toggleBookmark(report.id)}
+                onToggleLock={() => setIsLocked(prev => !prev)}
+                onTagClick={(tag) => setSearchQuery(tag)}
+              />
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Controls hint */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 text-white/50 text-sm z-50 text-center">
-        <div>
-          {currentIndex + 1} / {filteredReports.length} {searchQuery && '(filtered)'}
+      {/* Floating Bottom Navigator */}
+      {filteredReports.length > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-zinc-950/85 backdrop-blur-md border border-zinc-800 rounded-full px-4 py-1.5 shadow-2xl flex items-center gap-3 text-xs font-mono text-zinc-300">
+          <button
+            onClick={() => scrollToIndex(activeIndex - 1)}
+            className="hover:text-white px-2 py-0.5 rounded hover:bg-zinc-800 transition-colors"
+            title="Previous report (↑ or K)"
+          >
+            ← Prev
+          </button>
+
+          <span className="text-zinc-500 font-sans">|</span>
+
+          <span className="text-zinc-200">
+            <span className="text-white font-bold">{activeIndex + 1}</span> of {filteredReports.length.toLocaleString()}
+          </span>
+
+          <span className="text-zinc-500 font-sans">|</span>
+
+          <button
+            onClick={() => scrollToIndex(activeIndex + 1)}
+            className="hover:text-white px-2 py-0.5 rounded hover:bg-zinc-800 transition-colors"
+            title="Next report (↓ or J)"
+          >
+            Next →
+          </button>
+
+          <span className="text-zinc-500 font-sans">|</span>
+
+          <button
+            onClick={() => setIsLocked(prev => !prev)}
+            className={`px-2.5 py-0.5 rounded transition-all flex items-center gap-1 font-semibold ${
+              isLocked
+                ? 'bg-blue-500/25 text-blue-300 border border-blue-500/70 shadow-sm'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+            }`}
+            title="Lock current card to scroll and read without jumping (L)"
+          >
+            <span>{isLocked ? '🔒 Locked' : '🔓 Lock (L)'}</span>
+          </button>
         </div>
-        <div className="text-xs mt-1">
-          Scroll • Arrow keys • B to bookmark • {bookmarks.size} saved
-        </div>
-      </div>
+      )}
     </div>
   );
 }
