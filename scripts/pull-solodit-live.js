@@ -206,6 +206,7 @@ function transformLiveFinding(raw) {
     recommendation: recommendation + (poc && !recommendation.includes(poc) ? '\n\n**Proof of Concept:**\n' + poc : ''),
     tags: tags,
     url: url,
+    source: 'live',
   };
 }
 

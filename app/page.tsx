@@ -11,6 +11,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
+  const [selectedSource, setSelectedSource] = useState<'all' | 'live' | 'local'>('all');
   const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
@@ -46,6 +47,20 @@ export default function Home() {
   const touchStartY = useRef<number>(0);
   const isScrolling = useRef(false);
   const wheelTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Compute live vs local counts
+  const { liveCount, localCount } = useMemo(() => {
+    let live = 0;
+    let local = 0;
+    for (const r of reports) {
+      if (r.source === 'live' || r.id.startsWith('live-')) {
+        live++;
+      } else {
+        local++;
+      }
+    }
+    return { liveCount: live, localCount: local };
+  }, [reports]);
 
   // Load data on mount
   useEffect(() => {
@@ -86,6 +101,12 @@ export default function Home() {
       result = result.filter(r => r.severity === selectedSeverity);
     }
 
+    if (selectedSource === 'live') {
+      result = result.filter(r => r.source === 'live' || r.id.startsWith('live-'));
+    } else if (selectedSource === 'local') {
+      result = result.filter(r => r.source !== 'live' && !r.id.startsWith('live-'));
+    }
+
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().replace(/^#/, '');
       result = result.filter(report =>
@@ -99,7 +120,7 @@ export default function Home() {
     }
 
     return result;
-  }, [reports, searchQuery, selectedSeverity, showBookmarksOnly, bookmarks]);
+  }, [reports, searchQuery, selectedSeverity, selectedSource, showBookmarksOnly, bookmarks]);
 
   // Keep active index in bounds
   const activeIndex = useMemo(() => {
@@ -280,11 +301,15 @@ export default function Home() {
         setSearchQuery={setSearchQuery}
         selectedSeverity={selectedSeverity}
         setSelectedSeverity={setSelectedSeverity}
+        selectedSource={selectedSource}
+        setSelectedSource={setSelectedSource}
         showBookmarksOnly={showBookmarksOnly}
         setShowBookmarksOnly={setShowBookmarksOnly}
         bookmarksCount={bookmarks.size}
         totalCount={reports.length}
         filteredCount={filteredReports.length}
+        liveCount={liveCount}
+        localCount={localCount}
         onRandom={handleRandom}
         isLocked={isLocked}
         setIsLocked={setIsLocked}
@@ -299,9 +324,9 @@ export default function Home() {
             <p className="text-zinc-400 text-sm">
               {showBookmarksOnly
                 ? 'You have not bookmarked any reports matching these criteria yet. Press B on any report to save it.'
-                : `No reports matched "${searchQuery}" with severity "${selectedSeverity}".`}
+                : `No reports matched your filters.`}
             </p>
-            <div className="flex gap-2 justify-center pt-2">
+            <div className="flex flex-wrap gap-2 justify-center pt-2">
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
@@ -316,6 +341,14 @@ export default function Home() {
                   className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-mono transition-colors"
                 >
                   Reset severity
+                </button>
+              )}
+              {selectedSource !== 'all' && (
+                <button
+                  onClick={() => setSelectedSource('all')}
+                  className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-xs font-mono transition-colors"
+                >
+                  Reset source ({selectedSource.toUpperCase()})
                 </button>
               )}
               {showBookmarksOnly && (
@@ -354,6 +387,7 @@ export default function Home() {
                 onToggleBookmark={() => toggleBookmark(report.id)}
                 onToggleLock={() => setIsLocked(prev => !prev)}
                 onTagClick={(tag) => setSearchQuery(tag)}
+                onSourceClick={(src) => setSelectedSource(src)}
               />
             </div>
           ))}

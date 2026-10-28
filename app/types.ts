@@ -10,4 +10,5 @@ export interface BugReport {
   recommendation?: string;
   tags: string[];
   url?: string;
+  source?: 'live' | 'local';
 }

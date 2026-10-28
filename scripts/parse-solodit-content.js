@@ -175,6 +175,7 @@ function parseReport(content, filename, auditor) {
         recommendation: recommendation + (poc && !recommendation.includes(poc) ? '\n\n**Proof of Concept:**\n' + poc : ''),
         tags: tags,
         url: `https://solodit.cyfrin.io/issues?search=${encodeURIComponent(title)}`,
+        source: 'local',
       });
     }
   }

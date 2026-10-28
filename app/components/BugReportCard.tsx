@@ -21,6 +21,7 @@ interface BugReportCardProps {
   onToggleBookmark: () => void;
   onToggleLock?: () => void;
   onTagClick?: (tag: string) => void;
+  onSourceClick?: (source: 'live' | 'local') => void;
 }
 
 const severityBadgeStyles = {
@@ -55,6 +56,7 @@ export default function BugReportCard({
   onToggleBookmark,
   onToggleLock,
   onTagClick,
+  onSourceClick,
 }: BugReportCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -209,6 +211,17 @@ export default function BugReportCard({
                   >
                     {report.severity}
                   </span>
+                  <button
+                    onClick={() => onSourceClick?.(report.source === 'live' || report.id.startsWith('live-') ? 'live' : 'local')}
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-md border tracking-wider font-semibold uppercase transition-colors ${
+                      report.source === 'live' || report.id.startsWith('live-')
+                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                        : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                    }`}
+                    title={report.source === 'live' || report.id.startsWith('live-') ? 'Live addition from Solodit (click to filter)' : 'Local report from Solodit content repository (click to filter)'}
+                  >
+                    {report.source === 'live' || report.id.startsWith('live-') ? 'LIVE' : 'LOCAL'}
+                  </button>
                   <span className="text-zinc-400 text-xs font-mono bg-zinc-900 border border-zinc-800 px-2.5 py-0.5 rounded-md">
                     {report.protocol}
                   </span>
